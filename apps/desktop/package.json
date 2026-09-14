@@ -1,0 +1,11 @@
+{
+  "name": "@ptcg/desktop", "version": "0.1.0", "private": true, "type": "module",
+  "exports": {
+    "./presentation": { "types": "./renderer-dist/components.d.ts", "default": "./renderer-dist/components.js" },
+    "./service": { "types": "./dist/coordinator/service.d.ts", "default": "./dist/coordinator/service.js" },
+    "./queries": { "types": "./dist/coordinator/queries.d.ts", "default": "./dist/coordinator/queries.js" },
+    "./security": { "types": "./dist/host/security.d.ts", "default": "./dist/host/security.js" },
+    "./policy": { "types": "./dist/coordinator/policy.d.ts", "default": "./dist/coordinator/policy.js" }
+  },
+  "dependencies": { "@ptcg/contracts": "workspace:*", "@ptcg/core": "workspace:*", "@ptcg/application": "workspace:*", "@ptcg/adapters": "workspace:*", "@ptcg/infrastructure": "workspace:*", "react": "19.3.0", "react-dom": "19.3.0" }
+}

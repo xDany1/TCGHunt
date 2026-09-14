@@ -1,0 +1,113 @@
+{
+  "provenance": "Real user-executed Windows run-3WOI8T, parser v2. Public bounded projections; no credentials, profile or personal database path. Values are historical, not current inventory.",
+  "captures": [
+    {
+      "actions": [],
+      "releaseTexts": [],
+      "challenge": false,
+      "accessDenied": false,
+      "missingProduct": false,
+      "asins": [
+        "B0H78BB9TY"
+      ],
+      "titles": [
+        "Pokémon TCG: 30TH Celebration Elite Trainer Box"
+      ],
+      "prices": [],
+      "currencies": [],
+      "availability": [
+        "No disponible por el momento.",
+        "No disponible por el momento."
+      ],
+      "sellerIds": [],
+      "sellers": [],
+      "shippers": [],
+      "selectedAsin": true,
+      "offerRegion": true,
+      "target": {
+        "asin": "B0H78BB9TY",
+        "url": "https://www.amazon.com.mx/dp/B0H78BB9TY",
+        "marketplace": "MX",
+        "deliveryScope": "amazon-mx:anonymous:location-unvalidated"
+      },
+      "captureId": "amazon-browser-B0H78BB9TY-0-1789108756304",
+      "capturedAt": 1789108756304,
+      "status": 200
+    },
+    {
+      "actions": [
+        "Reserva ahora"
+      ],
+      "releaseTexts": [
+        "Este producto saldrá a la venta el 13 de noviembre de 2026. Cómpralo en preventa ya."
+      ],
+      "challenge": false,
+      "accessDenied": false,
+      "missingProduct": false,
+      "asins": [
+        "B0HG3C5JK6"
+      ],
+      "titles": [
+        "Pokémon Paquete de Sobres de Refuerzo de Megaevolución-Dominio Delta de JCC"
+      ],
+      "prices": [
+        "$589.00"
+      ],
+      "currencies": [],
+      "availability": [
+        "Este producto saldrá a la venta el 13 de noviembre de 2026."
+      ],
+      "sellerIds": [],
+      "sellers": [],
+      "shippers": [],
+      "selectedAsin": true,
+      "offerRegion": true,
+      "target": {
+        "asin": "B0HG3C5JK6",
+        "url": "https://www.amazon.com.mx/dp/B0HG3C5JK6",
+        "marketplace": "MX",
+        "deliveryScope": "amazon-mx:anonymous:location-unvalidated"
+      },
+      "captureId": "amazon-browser-B0HG3C5JK6-0-1789108758036",
+      "capturedAt": 1789108758036,
+      "status": 200
+    },
+    {
+      "actions": [
+        "Agregar al carrito",
+        "Comprar ahora"
+      ],
+      "releaseTexts": [],
+      "challenge": false,
+      "accessDenied": false,
+      "missingProduct": false,
+      "asins": [
+        "B0GYVHLP4L"
+      ],
+      "titles": [
+        "Pok?mon Tcg: Mega Evolution?pitch Black Elite Trainer Box"
+      ],
+      "prices": [
+        "$1,099.00"
+      ],
+      "currencies": [],
+      "availability": [
+        "Disponible"
+      ],
+      "sellerIds": [],
+      "sellers": [],
+      "shippers": [],
+      "selectedAsin": true,
+      "offerRegion": true,
+      "target": {
+        "asin": "B0GYVHLP4L",
+        "url": "https://www.amazon.com.mx/dp/B0GYVHLP4L",
+        "marketplace": "MX",
+        "deliveryScope": "amazon-mx:anonymous:location-unvalidated"
+      },
+      "captureId": "amazon-browser-B0GYVHLP4L-0-1789108760029",
+      "capturedAt": 1789108760029,
+      "status": 200
+    }
+  ]
+}

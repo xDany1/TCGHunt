@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/contracts" },
+    { "path": "packages/application" },
+    { "path": "packages/adapters" },
+    { "path": "packages/infrastructure" },
+    { "path": "apps/desktop" },
+    { "path": "apps/desktop/tsconfig.renderer.json" },
+    { "path": "tests" }
+  ]
+}

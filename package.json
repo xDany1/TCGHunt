@@ -1,0 +1,37 @@
+{
+  "name": "pokemon-opportunity-platform",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "bootstrap:offline": "node scripts/bootstrap.mjs",
+    "build": "node scripts/check.mjs build",
+    "typecheck": "node scripts/check.mjs typecheck",
+    "lint": "node scripts/check.mjs lint",
+    "format": "node scripts/check.mjs format",
+    "format:check": "node scripts/check.mjs format:check",
+    "test": "node scripts/check.mjs test",
+    "check": "node scripts/check.mjs all",
+    "desktop:build": "node scripts/check.mjs build && node scripts/desktop-build.mjs",
+    "desktop:test-build": "node scripts/check.mjs build && node scripts/desktop-build.mjs --test",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1",
+    "@ptcg/contracts": "workspace:*",
+    "@ptcg/desktop": "workspace:*",
+    "electron": "44.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "esbuild": "0.28.2",
+    "@electron/asar": "4.3.0",
+    "typescript": "6.0.3",
+    "@types/node": "25.9.5",
+    "undici-types": "7.24.6"
+  }
+}

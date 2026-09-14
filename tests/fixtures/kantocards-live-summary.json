@@ -1,0 +1,23 @@
+{
+  "status": "PARTIAL",
+  "reason": "CAPTURE_PARSED_LIVE_DURABILITY_NOT_YET_QUALIFIED",
+  "productId": "9600895451379",
+  "variantIds": ["49183411208435"],
+  "requests": [{
+    "sequence": 1,
+    "method": "POST",
+    "host": "kantocards.com",
+    "endpoint": "/api/2026-07/graphql.json",
+    "handle": "perfect-order-booster-pack-espanol",
+    "startedAt": 1788935699868,
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "apiVersion": "2026-07",
+    "retryAfter": null,
+    "age": null,
+    "deprecated": false,
+    "rateMetadataPresent": false,
+    "bytes": 607,
+    "receivedAt": 1788935700090
+  }]
+}

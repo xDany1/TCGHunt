@@ -1,0 +1,14 @@
+packages:
+  - packages/*
+  - apps/*
+
+onlyBuiltDependencies: []
+
+# pnpm 11 otherwise tries an implicit install before running a script.
+verifyDepsBeforeRun: false
+offline: false
+minimumReleaseAgeExclude:
+  - electron@44.3.0
+  - react-dom@19.3.0
+  - react@19.3.0
+  - scheduler@0.28.0

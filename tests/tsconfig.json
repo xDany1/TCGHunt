@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "dist", "types": ["node"] },
+  "include": ["**/*.ts"],
+  "exclude": ["dist"],
+  "references": [
+    { "path": "../packages/core" },
+    { "path": "../packages/contracts" },
+    { "path": "../apps/desktop" },
+    { "path": "../apps/desktop/tsconfig.renderer.json" },
+    { "path": "../packages/application" },
+    { "path": "../packages/adapters" },
+    { "path": "../packages/infrastructure" }
+  ]
+}

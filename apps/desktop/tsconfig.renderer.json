@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.base.json", "compilerOptions": { "rootDir": "src/renderer", "outDir": "renderer-dist", "lib": ["ES2022", "DOM", "DOM.Iterable"], "types": ["react", "react-dom"], "jsx": "react-jsx" },
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx"], "references": [{ "path": "../../packages/contracts" }]
+}

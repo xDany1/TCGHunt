@@ -1,0 +1,27 @@
+// Offline qualification of a consistent copy of the user's successful M3.5 database.
+import { DatabaseSync, backup } from 'node:sqlite';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { DesktopService } from '@ptcg/desktop/service';
+const evidence = JSON.parse(readFileSync('outputs/M3_5_LIVE_RESULT.json', 'utf8'));
+assert.equal(evidence.status, 'PASS');
+mkdirSync('work/m4-existing-evidence', { recursive: true }); const path = join(mkdtempSync(resolve('work/m4-existing-evidence/copy-')), 'astra.sqlite');
+const source = new DatabaseSync(evidence.databasePath, { readOnly: true });
+const tables = ['store_instances', 'store_products', 'variants', 'listings', 'offers', 'sellers', 'listing_observations', 'decision_evaluations', 'purchase_intents', 'audit_events', 'event_outbox', 'handler_receipts', 'checkout_attempts'];
+const before = Object.fromEntries(tables.map(t => [t, source.prepare(`SELECT count(*) n FROM ${t}`).get().n]));
+const fingerprint = db => Object.fromEntries(tables.map(t => [t, createHash('sha256').update(JSON.stringify(db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all())).digest('hex')]));
+const beforeHashes = fingerprint(source);
+const originalSchema = source.prepare('PRAGMA user_version').get().user_version;
+await backup(source, path); source.close();
+const service = new DesktopService({ databasePath: path, now: Date.now, newId: () => { throw new Error('No new work authorized in evidence replay'); }, networkEnabled: false, fixtureMode: false, read: async () => { throw new Error('Network prohibited'); } });
+service.start(); const snapshot = service.snapshot();
+assert.equal(snapshot.products.length, 2); assert.equal(snapshot.evaluations.length, 4); assert.equal(snapshot.diagnostics.schemaVersion, 4);
+assert.ok(snapshot.evaluations.every(e => e.sellerStatus === 'APPROVED' && e.decision === 'BLOCKED' && e.outcome === 'INELIGIBLE' && e.arithmetic === 'INDETERMINATE'));
+await service.stop();
+const db = new DatabaseSync(path, { readOnly: true }); const after = Object.fromEntries(tables.map(t => [t, db.prepare(`SELECT count(*) n FROM ${t}`).get().n]));
+assert.deepEqual(fingerprint(db), beforeHashes);
+assert.deepEqual(after, before); assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []); assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok'); db.close();
+writeFileSync('outputs/M4_EXISTING_EVIDENCE.json', JSON.stringify({ status: 'PASS', basis: 'USER_AUTHORIZED_FULL_M3_5_LIVE_DATABASE', sourceOpenedReadOnly: true, externalRequests: 0, originalSchema, copySchema: 3, countsBefore: before, countsAfter: after, unchangedTableHashes: beforeHashes, snapshot, copiedDatabase: path }, null, 2));
+console.log('PASS: M3.5 live evidence projects through M4 on a migrated copy; source untouched.');
