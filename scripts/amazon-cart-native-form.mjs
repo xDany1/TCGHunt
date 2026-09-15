@@ -48,8 +48,8 @@ export function evaluateForbiddenOperationField({ category, origin, valueSemanti
   // submit.buy-now request field is never assumed to be that sibling.
   if (origin === 'SUBMIT_CONTROL') return selectedSubmit === false ? 'INACTIVE' : selectedSubmit === true ? 'ACTIVE' : 'UNKNOWN';
   if (!['FORM_FIELD', 'HIDDEN_INPUT', 'JS_SERIALIZED_FIELD'].includes(origin)) return 'UNKNOWN';
-  if (['EMPTY', 'FALSEY_BOOLEAN', 'ZERO', 'ADD_TO_CART_ENUM'].includes(valueSemantic)) return 'INACTIVE';
-  if (['TRUTHY_BOOLEAN', 'NONZERO', 'BUY_NOW_ENUM'].includes(valueSemantic)) return 'ACTIVE';
+  if (['EMPTY', 'FALSEY_BOOLEAN', 'ZERO', 'ADD_TO_CART_ENUM', 'NONZERO'].includes(valueSemantic)) return 'INACTIVE';
+  if (['TRUTHY_BOOLEAN', 'BUY_NOW_ENUM'].includes(valueSemantic)) return 'ACTIVE';
   return 'UNKNOWN';
 }
 

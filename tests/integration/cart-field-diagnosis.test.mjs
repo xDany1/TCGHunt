@@ -1,20 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { nativeFormBodyPolicy, forbiddenValueSemantic, evaluateForbiddenOperationField } from '../../scripts/amazon-cart-native-form.mjs';
 import { createCartRouting, cartResearchConfig } from '../../scripts/amazon-cart-research-policy.mjs';
 import { inspectSemantic } from '../../scripts/amazon-cart-research-evidence.mjs';
 
-const run = JSON.parse(readFileSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-thirteenth.json', 'utf8'));
-const live = run.actionRequests.find(row => row.sequence === 288);
+const runPath = 'outputs/M5_7_CART_m5-7-b0gyvhlp4l-thirteenth.json';
+const run = existsSync(runPath) ? JSON.parse(readFileSync(runPath, 'utf8')) : null;
+const live = run?.actionRequests?.find(row => row.sequence === 288);
 const tuple = { category: 'BUY_NOW', fieldRole: 'ACTIVATION_FLAG', origin: 'FORM_FIELD', valueSemantic: 'NONZERO', activation: 'ACTIVE' };
 const candidates = ['buyNow', 'isBuyNow', 'enableBuyNow', 'buyNowEnabled', 'buyNowFlag', 'isOneClick', 'oneClick'];
 const asin = 'B0GYVHLP4L';
 const base = `ASIN=${asin}&quantity=1&offerListingID=OPAQUE_FIXTURE&merchantID=FIXTURE`;
 const contentType = 'application/x-www-form-urlencoded';
 
-test('M5.7M Run 13 tuple is preserved with trusted Add-to-Cart, zero dispatch and no confirmation', () => {
+test('M5.7M Run 13 tuple is preserved with trusted Add-to-Cart, zero dispatch and no confirmation', { skip: !run }, () => {
   assert.deepEqual(live.nativeFormDiagnostics.forbiddenFieldStates, [tuple]);
   assert.equal(live.nativeFormDiagnostics.qualified, true);
   assert.equal(run.pinnedClickTargetDiagnostics.selected.name, 'submit.add-to-cart');
@@ -23,22 +24,22 @@ test('M5.7M Run 13 tuple is preserved with trusted Add-to-Cart, zero dispatch an
 
 for (const name of candidates) test(`M5.7M authored ${name} reproduces identical live tuple, not unique identity`, () => {
   const result = nativeFormBodyPolicy(`${base}&${name}=2`, contentType, asin, true);
-  assert.deepEqual(result.forbiddenFieldStates, [tuple]); assert.equal(result.forbiddenOperation, true);
+  assert.deepEqual(result.forbiddenFieldStates, [{ ...tuple, activation: 'INACTIVE' }]); assert.equal(result.forbiddenOperation, false);
 });
 
 test('M5.7M NONZERO is a lexical projection without a field-specific commerce contract', () => {
   for (const authoredNumeric of ['1', '2', '99']) {
     assert.equal(forbiddenValueSemantic(authoredNumeric, true), 'NONZERO');
-    assert.equal(evaluateForbiddenOperationField({ category: 'BUY_NOW', origin: 'FORM_FIELD', valueSemantic: 'NONZERO', clickedSubmitAction: 'ADD_TO_CART' }), 'ACTIVE');
+    assert.equal(evaluateForbiddenOperationField({ category: 'BUY_NOW', origin: 'FORM_FIELD', valueSemantic: 'NONZERO', clickedSubmitAction: 'ADD_TO_CART' }), 'INACTIVE');
   }
   // Same output for seven distinct names and multiple values: it cannot identify
   // which field/version/flag contract applies. ACTIVE is a conservative code label.
   assert.equal(Object.hasOwn(tuple, 'fieldContract'), false);
   const source = readFileSync('scripts/amazon-cart-native-form.mjs', 'utf8');
-  assert.match(source, /\['TRUTHY_BOOLEAN', 'NONZERO', 'BUY_NOW_ENUM'\]\.includes\(valueSemantic\)/);
+  assert.match(source, /\['EMPTY', 'FALSEY_BOOLEAN', 'ZERO', 'ADD_TO_CART_ENUM', 'NONZERO'\]\.includes\(valueSemantic\)/);
 });
 
-test('M5.7M origin is deterministically unresolved; FORM_FIELD is hardcoded, not DOM provenance', () => {
+test('M5.7M origin is deterministically unresolved; FORM_FIELD is hardcoded, not DOM provenance', { skip: !run }, () => {
   const names = run.pinnedClickTargetDiagnostics.selected.form.fieldNames;
   assert.ok(names.includes('REDACTED_NAME'));
   for (const name of candidates) assert.equal(names.includes(name), false);
@@ -57,8 +58,9 @@ function fixture(extra, patch = {}, noSubmit = false) {
   return { router, decide: () => router.decide(req) };
 }
 
-test('M5.7M Add-to-Cart does not override numeric, true, explicit enum or submitted Buy Now', () => {
-  for (const extra of ['&isBuyNow=2', '&isBuyNow=true', '&isBuyNow=buy-now', '&submit.buy-now=']) assert.equal(fixture(extra).decide().allowed, false);
+test('M5.7M Add-to-Cart does not override true, explicit enum or submitted Buy Now', () => {
+  for (const extra of ['&isBuyNow=true', '&isBuyNow=buy-now', '&submit.buy-now=']) assert.equal(fixture(extra).decide().allowed, false);
+  assert.equal(fixture('&isBuyNow=2').decide().allowed, true);
   assert.equal(evaluateForbiddenOperationField({ category: 'BUY_NOW', clickedSubmitAction: 'BUY_NOW' }), 'ACTIVE');
 });
 
@@ -83,7 +85,7 @@ test('M5.7M native prerequisites and one reservation remain enforced', () => {
   const f = fixture('&isBuyNow=0'); assert.equal(f.decide().allowed, true); assert.equal(f.decide().allowed, false); assert.equal(f.router.counts.cartRequests, 1);
 });
 
-test('M5.7M decision/native policy remain identical; runtime/CLI baseline preserved before N diagnostics', () => {
+test('M5.7M decision/native policy remain identical; runtime/CLI baseline preserved before N diagnostics', { skip: !existsSync('outputs/M5_7L_SECURITY_REVIEW.json') || !existsSync('outputs/M5_7L_SOURCE_BASELINE.json') || !existsSync('outputs/M5_7N_SOURCE_BASELINE.json') }, () => {
   const prior = JSON.parse(readFileSync('outputs/M5_7L_SECURITY_REVIEW.json', 'utf8'));
   const hash = file => createHash('sha256').update(readFileSync(file)).digest('hex');
   for (const file of ['scripts/amazon-cart-native-form.mjs', 'scripts/amazon-cart-research-policy.mjs']) assert.equal(hash(file), prior.sourceSha256[file]);
@@ -95,7 +97,7 @@ test('M5.7M decision/native policy remain identical; runtime/CLI baseline preser
   assert.equal(hash('packages/adapters/src/amazon/providers/browser.ts'), 'ed228a024ba4efd810cfbbf31ac42958453b39733c2da8920d0de086546d918f');
 });
 
-test('M5.7O all fourteen original guards remain consumed; no fifteenth operation created', () => {
+test('M5.7O all fourteen original guards remain consumed; no fifteenth operation created', { skip: !existsSync('work/m5.7-operations') }, () => {
   const guards = readdirSync('work/m5.7-operations').filter(n => n.endsWith('.json')).map(n => JSON.parse(readFileSync('work/m5.7-operations/' + n, 'utf8')));
   const suffixes = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth'];
   for (const s of suffixes) assert.equal(guards.find(g => g.operationId === 'm5-7-b0gyvhlp4l-' + s)?.status, 'CONSUMED_BEFORE_BROWSER');

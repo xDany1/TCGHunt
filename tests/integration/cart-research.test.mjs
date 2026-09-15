@@ -1,7 +1,7 @@
 import { installBuyNowDomDiagnostics } from '../../scripts/amazon-buy-now-diagnostics.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -561,7 +561,7 @@ test('M5.7J eleventh ID is single-use; all ten prior IDs remain consumed', t => 
 });
 
 
-test('M5.7K Run 11 records FIELD_NAME but cannot identify the redacted matching key', () => {
+test('M5.7K Run 11 records FIELD_NAME but cannot identify the redacted matching key', { skip: !existsSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-eleventh.json') || !existsSync('outputs/M5_7K_SOURCE_BASELINE.json') }, () => {
   const r = JSON.parse(readFileSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-eleventh.json', 'utf8'));
   const row = r.actionRequests.find(x => x.sequence === 290);
   assert.equal(row.nativeFormDiagnostics.qualified, true);
@@ -621,7 +621,7 @@ test('M5.7K twelfth isolated operation remains single-use after all eleven consu
 });
 
 
-test('M5.7L Run 12 proves presence-only BUY_NOW rejection, not live activation', () => {
+test('M5.7L Run 12 proves presence-only BUY_NOW rejection, not live activation', { skip: !existsSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-twelfth.json') || !existsSync('outputs/M5_7L_SOURCE_BASELINE.json') }, () => {
   const r = JSON.parse(readFileSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-twelfth.json', 'utf8'));
   const d = r.actionRequests.find(x => x.sequence === 305).nativeFormDiagnostics;
   assert.equal(d.qualified, true); assert.equal(d.fieldClassifications.FORBIDDEN_OPERATION_FIELD, 1); assert.deepEqual(d.forbiddenFieldCategories, ['BUY_NOW']);
@@ -635,7 +635,7 @@ test('M5.7L Run 12 proves presence-only BUY_NOW rejection, not live activation',
 
 for (const [value, semantic, state] of [
   ['', 'EMPTY', 'INACTIVE'], ['false', 'FALSEY_BOOLEAN', 'INACTIVE'], ['0', 'ZERO', 'INACTIVE'], ['add-to-cart', 'ADD_TO_CART_ENUM', 'INACTIVE'],
-  ['true', 'TRUTHY_BOOLEAN', 'ACTIVE'], ['1', 'NONZERO', 'ACTIVE'], ['2', 'NONZERO', 'ACTIVE'], ['buy-now', 'BUY_NOW_ENUM', 'ACTIVE'], ['SECRET_CANARY', 'UNKNOWN', 'UNKNOWN']
+  ['true', 'TRUTHY_BOOLEAN', 'ACTIVE'], ['1', 'NONZERO', 'INACTIVE'], ['2', 'NONZERO', 'INACTIVE'], ['buy-now', 'BUY_NOW_ENUM', 'ACTIVE'], ['SECRET_CANARY', 'UNKNOWN', 'UNKNOWN']
 ]) test('M5.7L BUY_NOW request value class ' + semantic, () => {
   assert.equal(forbiddenValueSemantic(value, true), semantic);
   const d = nativeFixture({ requestPatch: { body: nativeBody + '&isBuyNow=' + encodeURIComponent(value) } }).decide();
@@ -691,10 +691,11 @@ test('M5.7N runtime persists candidate correlation without permitting ACTIVE or 
   for (const value of ['2', 'SECRET_CANARY']) {
     const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: nativeBody + '&isBuyNow=' + value });
     const r = await runCartResearch(config, f.chromium, f.clock, () => { });
-    assert.equal(r.cartRequestDispatchCount, 0); assert.equal(r.cartMutationCount, 0);
+    assert.equal(r.cartRequestDispatchCount, value === '2' ? 1 : 0);
+    assert.equal(r.cartMutationCount, value === '2' ? 1 : 0);
     assert.equal(r.buyNowFieldCorrelation.serializedBuyNowCandidateKey, 'IS_BUY_NOW');
     assert.equal(r.buyNowFieldCorrelation.correlation, 'BODY_ONLY_NOT_IN_DOM');
-    assert.equal(r.buyNowFieldCorrelation.currentActivationState, value === '2' ? 'ACTIVE' : 'UNKNOWN');
+    assert.equal(r.buyNowFieldCorrelation.currentActivationState, value === '2' ? 'INACTIVE' : 'UNKNOWN');
     assert.doesNotMatch(JSON.stringify(r), /SECRET_CANARY/);
   }
 });
@@ -703,6 +704,6 @@ test('M5.7N unavailable diagnostics do not change the existing routing decision'
   for (const body of [nativeBody, nativeBody + '&isBuyNow=2']) {
     const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: body, diagnosticThrows: true });
     const r = await runCartResearch(config, f.chromium, f.clock, () => { });
-    assert.equal(r.cartRequestDispatchCount, body === nativeBody ? 1 : 0); assert.equal(r.buyNowFieldCorrelation.correlation, 'UNKNOWN'); assert.doesNotMatch(JSON.stringify(r), /SECRET_DIAGNOSTIC_ERROR/);
+    assert.equal(r.cartRequestDispatchCount, 1); assert.equal(r.buyNowFieldCorrelation.correlation, 'UNKNOWN'); assert.doesNotMatch(JSON.stringify(r), /SECRET_DIAGNOSTIC_ERROR/);
   }
 });

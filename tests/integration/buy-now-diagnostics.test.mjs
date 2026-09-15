@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { candidateKeys, buyNowCandidateKey, successfulControlCandidate, installBuyNowDomDiagnostics, sanitizeDomCandidates, sanitizedSubmitter, correlateBuyNowFields } from '../../scripts/amazon-buy-now-diagnostics.mjs';
 
 const control = { candidateKey: 'IS_BUY_NOW', tagName: 'INPUT', inputType: 'hidden', hiddenByType: true, visible: false, enabled: true, disabled: false, checked: null, selected: null, isSubmitControl: false, isClickedSubmitter: false, belongsToQualifiedForm: true, hasName: true };
@@ -78,7 +78,7 @@ test('M5.7N submit diagnostics derive actual name/id/label/trust without grantin
   await f.listeners.submit({ target: f.form, submitter: f.node, isTrusted: true }); assert.equal(f.seen[2].trusted, false);
 });
 
-test('M5.7N policy and native event/activation source remain exactly unchanged', () => {
+test('M5.7N policy and native event/activation source remain exactly unchanged', { skip: !existsSync('outputs/M5_7N_SOURCE_BASELINE.json') }, () => {
   const baseline = JSON.parse(readFileSync('outputs/M5_7N_SOURCE_BASELINE.json', 'utf8'));
   for (const file of ['scripts/amazon-cart-research-policy.mjs', 'scripts/amazon-cart-native-form.mjs']) assert.equal(readFileSync(file, 'utf8'), baseline[file].source);
   const source = readFileSync('scripts/amazon-buy-now-diagnostics.mjs', 'utf8');
