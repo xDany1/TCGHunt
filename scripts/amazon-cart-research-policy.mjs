@@ -80,8 +80,12 @@ export function createCartRouting(config) {
       qualifiedCartPathMatch = qualifiedCartAction.test(path);
       const nativePath = strictNativeCartPath(path); const nativePost = nativePath && method === 'POST' && type === 'document';
       if (nativePost) qualifiedCartPathMatch = true;
-      const nativeBody = nativePost ? nativeFormBodyPolicy(body, contentType, config.asin) : null;
-      if (nativeBody) nativeFormDiagnostics = { sensitiveMaterialPresent: nativeBody.sensitiveMaterialPresent, forbiddenOperation: nativeBody.forbiddenOperation, forbiddenOperationSources: nativeBody.forbiddenOperationSources, bodyQualificationReason: nativeBody.reason };
+      let nativeBody = nativePost ? nativeFormBodyPolicy(body, contentType, config.asin) : null;
+      // Presence-only relaxation is evaluated only after every independent native
+      // eligibility check, including the unchanged request-body identity invariant.
+      const qualifiedInteraction = nativePost && nativeBody.bodyContextMatched && !!path && u.protocol === 'https:' && !u.username && !u.password && !u.port && !forbidden.test(path) && !forbidden.test(semanticText(u.search)) && main && allowed < 240 && u.hostname === 'www.amazon.com.mx' && config.mode === 'CART_RESEARCH' && config.researchOnly && qualifiedImmediate && phase === 'ACTION' && observation.clickInitiated && !redirect && !cartRequests && nativeEvidence?.qualified && nativeEvidence.trustedClick && nativeEvidence.trustedSubmit && nativeEvidence.productBound && ![...new URLSearchParams(u.search).keys()].some(key => /^(?:asin|quantity|offerlistingid|merchantid)/i.test(key));
+      if (qualifiedInteraction) nativeBody = nativeFormBodyPolicy(body, contentType, config.asin, true);
+      if (nativeBody) nativeFormDiagnostics = { sensitiveMaterialPresent: nativeBody.sensitiveMaterialPresent, forbiddenOperation: nativeBody.forbiddenOperation, forbiddenOperationSources: nativeBody.forbiddenOperationSources, bodyQualificationReason: nativeBody.reason, fieldClassifications: nativeBody.fieldClassifications, forbiddenFieldCategories: nativeBody.forbiddenFieldCategories, legacyNameMatchClasses: nativeBody.legacyNameMatchClasses, forbiddenFieldPresent: nativeBody.forbiddenFieldPresent, forbiddenFieldActivated: nativeBody.forbiddenFieldActivated, forbiddenFieldStates: nativeBody.forbiddenFieldStates };
       if (!path) return deny('INVALID_PATH_ENCODING');
       if (u.protocol !== 'https:' || u.username || u.password || u.port) return deny('URL_AUTHORITY_POLICY');
       if (forbidden.test(path)) forbiddenLocations.push('PATH');
@@ -98,7 +102,7 @@ export function createCartRouting(config) {
         if ([...new URLSearchParams(u.search).keys()].some(key => /^(?:asin|quantity|offerlistingid|merchantid)/i.test(key))) return deny('NATIVE_FORM_QUERY_CONTEXT');
         if (!nativeBody.valid) return deny(nativeBody.reason);
         cartRequests++; counts.cartRequests = cartRequests; allowed++; counts.allowed = allowed;
-        return { allowed: true, routingDecision: 'ALLOW_NATURAL_CART_ACTION', phase, classification: 'CART_CANDIDATE', qualifiedCartPathMatch, forbiddenLocations, nativeForm: { sensitiveMaterialPresent: nativeBody.sensitiveMaterialPresent, forbiddenOperation: false, causalEnvelopeQualified: true } };
+        return { allowed: true, routingDecision: 'ALLOW_NATURAL_CART_ACTION', phase, classification: 'CART_CANDIDATE', qualifiedCartPathMatch, forbiddenLocations, nativeForm: { sensitiveMaterialPresent: nativeBody.sensitiveMaterialPresent, forbiddenOperation: false, causalEnvelopeQualified: true, fieldClassifications: nativeBody.fieldClassifications, forbiddenFieldCategories: nativeBody.forbiddenFieldCategories, legacyNameMatchClasses: nativeBody.legacyNameMatchClasses, forbiddenFieldPresent: nativeBody.forbiddenFieldPresent, forbiddenFieldActivated: nativeBody.forbiddenFieldActivated, forbiddenFieldStates: nativeBody.forbiddenFieldStates } };
       }
       const firstParty = CART_HOSTS.includes(u.hostname); let classification = 'UI_AUXILIARY'; const qualifiedPath = qualifiedCartAction.test(path);
       if (firstParty && (cartAction.test(path) || qualifiedPath)) {

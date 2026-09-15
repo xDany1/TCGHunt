@@ -30,7 +30,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     // Preserve the first result for each operation as well as the requested latest summary.
     const perOperation = `outputs/M5_7_CART_${config.operationId}.json`;
     try { writeFileSync(perOperation, JSON.stringify(result, null, 2) + '\n', { flag: 'wx' }); } catch { /* Never overwrite an earlier operation record. */ }
-    const resultPath = 'outputs/M5_7J_CART_CORRELATION_RESULT.json'; // All ten prior runs remain immutable.
+    const resultPath = 'outputs/M5_7N_CART_CORRELATION_RESULT.json'; // All thirteen prior runs remain immutable.
     writeFileSync(resultPath, JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify({ status: result.status, reason: result.reason, cartConfirmed: result.cartConfirmed, cartMutationCount: result.cartMutationCount, backendTransportFeasibility: result.backendTransportFeasibility, result: resultPath }));
     if (!result.cartConfirmed) process.exitCode = 1;

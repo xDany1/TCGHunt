@@ -6,6 +6,7 @@ import { BODY_CAP, inspectSemantic, headerPresence, pathPattern, correlateTraffi
 import { inspectCartControls, installCartEventObservers, sanitizedDomEvent, installInitiatorDiagnostics, publicLocation } from './amazon-cart-causality.mjs';
 import { prepareViewportControl } from './amazon-cart-viewport.mjs';
 import { installPinnedCartObservers, immutableNativeEvent, nativeCartCausality } from './amazon-cart-native-form.mjs';
+import { candidateKeys, installBuyNowDomDiagnostics, sanitizeDomCandidates, sanitizedSubmitter, correlateBuyNowFields } from './amazon-buy-now-diagnostics.mjs';
 import { sanitizedRouteFailure } from './amazon-cart-route-diagnostics.mjs';
 
 /** DOM-only projection. Tokens, HTML, form contents, storage and credentials never leave this function. */
@@ -129,6 +130,13 @@ export async function runCartResearch(config, chromium, clock, claimOperation, s
               requestEvidence, headerPresence: headerPresence(headers), status: null, contentType: null, responseEvidence: null
             };
             if (request.method() === 'POST' && request.resourceType() === 'document') row.nativeFormDiagnostics = { ...nativeEvidence, ...(decision.nativeForm ?? {}) };
+            // Diagnostic projection cannot alter the previously computed decision.
+            if (main && url.hostname === 'www.amazon.com.mx' && observation.phase === 'ACTION' && request.method() === 'POST' && request.resourceType() === 'document' && decision.qualifiedCartPathMatch) {
+              try {
+                row.buyNowFieldCorrelation = correlateBuyNowFields(result.buyNowDomBeforeClick, body, requestContentType, decision.nativeForm?.forbiddenFieldStates);
+                result.buyNowFieldCorrelation = row.buyNowFieldCorrelation;
+              } catch { row.buyNowFieldCorrelation = { correlation: 'UNKNOWN' }; }
+            }
             trace.stage = 'RECORD'; recordedRow = row; rows.push(row); byRequest.set(request, row);
             initiators.bind(request.url(), request.method(), row);
             if (!decision.allowed) { if (decision.reason === 'FORBIDDEN_PATH' && request.isNavigationRequest()) { stop = true; routing.halt(); } trace.stage = 'ABORT'; await route.abort(); return; }
@@ -180,6 +188,11 @@ export async function runCartResearch(config, chromium, clock, claimOperation, s
         result.cartCountBefore = before.cartCount; result.preActionQualification = { ...qualifyCartPage(config, before), evidence: before };
         result.priceEvidence = before.price; result.sellerEvidence = before.sellerId;
         if (stop || !result.preActionQualification.qualified) throw new Error('PRE_ACTION_NOT_QUALIFIED');
+        // Independent diagnostic listener/snapshot; never input to the native gate.
+        result.clickedSubmitter = sanitizedSubmitter(null);
+        try {
+          result.buyNowDomBeforeClick = sanitizeDomCandidates(await boundedBrowserStep(selectedControl.evaluate(installBuyNowDomDiagnostics, { keys: candidateKeys, report: value => { if (accepting) result.clickedSubmitter = sanitizedSubmitter(value); } }, { exposeFunctions: true }), 1500, 'BUY_NOW_DIAGNOSTIC_TIMEOUT'));
+        } catch { result.buyNowDomBeforeClick = { complete: false, domCandidates: [] }; }
         stage('ACTION'); routing.arm(before, config.operationId); mark('actionArmedAt', 'ACTION_ARMED');
         nativeCausality.arm(clock.now());
         // Exact selected submit control; no force click, fallback selector, retry, Buy Now or cleanup click.

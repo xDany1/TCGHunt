@@ -1,4 +1,34 @@
-# Current integration — M5.7J fail-closed native route repair
+# Current integration — M5.7O semantic attribution unresolved
+
+**M5.7O INCONCLUSIVE — FAIL CLOSED (Outcome C)**. The immutable Run 14 proves hidden IS_BUY_NOW/NONZERO with trusted Add-to-Cart; the overwritten mutable summary is a fenced retry. One passive product navigation reached a continue-shopping interstitial, which was not bypassed. Product form/source semantics remain unavailable. 1,144 tests and quality gates pass. Routing and execution policy unchanged; all fourteen IDs consumed. No fifteenth mutation run, BackendCartTransport or next milestone prepared. [Report](../outputs/M5_7O_REPORT.md).
+
+Earlier handoffs are historical.
+
+# Historical integration — M5.7N candidate identity diagnostics
+
+**M5.7N IMPLEMENTED — FOURTEENTH WINDOWS BUY_NOW DIAGNOSTIC RUN PENDING**. Diagnostic-only closed candidate identity, qualified pre-click form metadata, trusted submitter projection and body correlation are implemented. ACTIVE/UNKNOWN still block; routing/native policy permissions are unchanged. 1,133 tests and configured quality gates pass. All thirteen previous IDs remain consumed. No live run, BackendCartTransport or next milestone started; M5.7 remains open. [Report and sole diagnostic command](../outputs/M5_7N_REPORT.md).
+
+M5.7M remains historically inconclusive; N adds observation only, not a semantic waiver.
+
+# Historical integration — M5.7M semantic gate unresolved
+
+**M5.7M INCONCLUSIVE — FAIL CLOSED (Outcome C)**. Run 13 proves BUY_NOW / ACTIVATION_FLAG / NONZERO / ACTIVE under the current code, but its exact key, DOM origin and field-specific meaning are not recoverable from the retained projection. The block and all runtime guards remain unchanged. No fourteenth run is prepared. All thirteen prior IDs are consumed. M5.7 remains open; no live action, BackendCartTransport or next milestone started. [Diagnosis](../outputs/M5_7M_REPORT.md).
+
+Earlier handoffs are historical; no further live run is authorized by this handoff.
+
+# Historical integration — M5.7L native BUY_NOW activation
+
+**M5.7L IMPLEMENTED — THIRTEENTH WINDOWS CART CORRELATION RUN PENDING**. BUY_NOW presence is now separate from INACTIVE / ACTIVE / UNKNOWN activation. Only recognized inactive public flags under the complete trusted native Add-to-Cart gate can cease blocking; active/unknown states and Buy Now submissions still block. 1,080 tests and all configured quality gates pass. Run 12 proves the BUY_NOW category but its exact live key/origin/value remains unknown. All twelve previous IDs are consumed. No live run, BackendCartTransport or next milestone started; M5.7 stays open. [Report and sole thirteenth-run command](../outputs/M5_7L_REPORT.md).
+
+Earlier handoffs are historical.
+
+# Historical integration — M5.7K native field semantics
+
+**M5.7K IMPLEMENTED — TWELFTH WINDOWS CART CORRELATION RUN PENDING**. Explicit native form field-name semantics and category-only diagnostics replace broad substring matching. Run 11 proves FIELD_NAME rejection but redaction prevents identifying the exact live key; authored false-positive reproduction is not claimed as live evidence. Full native eligibility, sensitive value policy, routing authorities/paths and browser-only dispatch remain intact. All eleven previous IDs remain consumed. No live run, BackendCartTransport or next milestone started; M5.7 remains open. [Report and sole twelfth-run command](../outputs/M5_7K_REPORT.md).
+
+Earlier handoffs are historical.
+
+# Historical integration — M5.7J fail-closed native route repair
 
 **M5.7J IMPLEMENTED — ELEVENTH WINDOWS CART CORRELATION RUN PENDING**. Run 10 route failure is reproduced as an unsupported Playwright handle-binding/cleanup defect; immutable trusted-event snapshots replace live Event handles. Sanitized fail-closed route diagnostics and post-continuation dispatch accounting are implemented. 1,001 tests and all configured quality gates pass. Routing, forbidden-operation guards, hosts and production BrowserProvider are unchanged. All ten prior IDs remain consumed. No live run, BackendCartTransport or next milestone started. M5.7 remains open. [Report and sole eleventh-run command](../outputs/M5_7J_REPORT.md).
 

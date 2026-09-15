@@ -1,3 +1,4 @@
+import { installBuyNowDomDiagnostics } from '../../scripts/amazon-buy-now-diagnostics.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -9,7 +10,7 @@ import { inspectSemantic, headerPresence, pathPattern, correlateTraffic, authori
 import { runCartResearch, cartUiSnapshot } from '../../scripts/amazon-cart-research-runtime.mjs';
 import { claimResearchOperation } from '../../scripts/amazon-cart-research.mjs';
 import { inspectCartControls } from '../../scripts/amazon-cart-causality.mjs';
-import { installPinnedCartObservers, nativeCartCausality, nativeFormBodyPolicy } from '../../scripts/amazon-cart-native-form.mjs';
+import { evaluateForbiddenOperationField, forbiddenValueSemantic, classifyFieldName, installPinnedCartObservers, nativeCartCausality, nativeFormBodyPolicy } from '../../scripts/amazon-cart-native-form.mjs';
 const args = ['--asin', 'B0GYVHLP4L', '--action', 'ADD_TO_CART', '--operation-id', 'authored-operation-1', '--max-price-mxn', '2000.00', '--expected-seller', 'amazon-retail-mx', '--ack-unknown-evidence', 'YES_RESEARCH_ONLY'];
 const config = cartResearchConfig({ AMAZON_CART_RESEARCH_ENABLED: '1' }, args);
 const before = { marketplace: 'MX', asin: config.asin, identityMatched: true, availability: 'AVAILABLE', purchaseMode: 'IMMEDIATE', actionType: 'ADD_TO_CART', actionVisible: true, quantity: 1, cartCount: 0, itemPresent: false, challenge: false, accessDenied: false, price: null, sellerId: null };
@@ -100,6 +101,7 @@ function fakeRuntime(options = {}) {
     setDefaultTimeout() { }, on(name, handler) { handlers[name] = handler; }, mainFrame: () => frame, url: () => options.url ?? config.url,
     goto: async () => { await emit(config.url, 'GET'); if (options.delayedBaseline) delayedBaseline = emit(options.actionUrl, 'GET', '', true); return { status: () => 200 }; },
     evaluate: async (fn, args, evalOptions) => {
+      if (fn === installBuyNowDomDiagnostics) { if (options.diagnosticThrows) throw new Error('SECRET_DIAGNOSTIC_ERROR'); return options.diagnosticDom ?? { complete: true, domCandidates: [] }; }
       if (fn === installPinnedCartObservers) { assert.equal(evalOptions.exposeFunctions, true); nativeBinding = args.report; return true; }
       if (fn === inspectCartControls) {
         const candidate = { semanticQualified: true, boundingBoxPresent: true, id: 'add-to-cart-button', name: 'submit.add-to-cart', tagName: 'INPUT', inputType: 'submit', visible: true, enabled: true, connected: true, productBound: true, recommendation: false, formActionQualified: true, actionLabel: config.action, unobscured: true, obstruction: 'UNOBSCURED', geometry: { intersectionRatio: 1, elementBoundingBox: { x: 0, y: 0, width: 50, height: 30 } }, form: { method: 'POST', enctype: 'application/x-www-form-urlencoded', expectedAsinMatched: true, quantityMatched: true } };
@@ -556,4 +558,151 @@ test('M5.7J eleventh ID is single-use; all ten prior IDs remain consumed', t => 
   const suffixes = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh'];
   for (const suffix of suffixes) claimResearchOperation(`m5-7-b0gyvhlp4l-${suffix}`, dir);
   for (const suffix of suffixes) assert.throws(() => claimResearchOperation(`m5-7-b0gyvhlp4l-${suffix}`, dir), /OPERATION_ALREADY_CONSUMED/);
+});
+
+
+test('M5.7K Run 11 records FIELD_NAME but cannot identify the redacted matching key', () => {
+  const r = JSON.parse(readFileSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-eleventh.json', 'utf8'));
+  const row = r.actionRequests.find(x => x.sequence === 290);
+  assert.equal(row.nativeFormDiagnostics.qualified, true);
+  assert.deepEqual(row.nativeFormDiagnostics.forbiddenOperationSources, ['FIELD_NAME']);
+  assert.equal(r.cartRequestDispatchCount, 0);
+  const prior = JSON.parse(readFileSync('outputs/M5_7K_SOURCE_BASELINE.json', 'utf8'));
+  const source = prior['scripts/amazon-cart-native-form.mjs'].source;
+  assert.match(source, /if \(operation\(name\) &&/);
+  const legacy = /purchase/i;
+  assert.equal(legacy.test('repurchaseToken'), true);
+  assert.equal(classifyFieldName('repurchaseToken').classification, 'SENSITIVE_TOKEN_FIELD');
+});
+
+for (const [name, expected] of [
+  ['ASIN', 'PUBLIC_CART_FIELD'], ['quantity', 'PUBLIC_CART_FIELD'], ['merchantID', 'PUBLIC_CART_FIELD'], ['offerListingID', 'PUBLIC_CART_FIELD'], ['submit.add-to-cart', 'PUBLIC_CART_FIELD'],
+  ['session-id', 'SENSITIVE_SESSION_FIELD'], ['authorization', 'SENSITIVE_SESSION_FIELD'], ['auth', 'SENSITIVE_SESSION_FIELD'], ['anti-csrftoken-a2z', 'SENSITIVE_TOKEN_FIELD'], ['signature', 'SENSITIVE_TOKEN_FIELD'], ['repurchaseToken', 'SENSITIVE_TOKEN_FIELD'], ['privatePayload', 'SENSITIVE_PRIVATE_FIELD'], ['submit', 'UNKNOWN_FIELD'], ['opaqueUnknown', 'UNKNOWN_FIELD']
+]) test('M5.7K semantic class ' + name, () => {
+  assert.equal(classifyFieldName(name).classification, expected);
+  const body = nativeBody + '&' + encodeURIComponent(name) + '=REDACTED_FIXTURE';
+  const result = nativeFormBodyPolicy(body, 'application/x-www-form-urlencoded', config.asin);
+  assert.equal(result.forbiddenOperation, false);
+  assert.doesNotMatch(JSON.stringify({ result, evidence: inspectSemantic(body, 'application/x-www-form-urlencoded', config.asin) }), /REDACTED_FIXTURE|repurchaseToken|privatePayload|opaqueUnknown/);
+});
+
+for (const name of ['checkout', 'checkoutToken', 'checkouttoken', 'place-order', 'submit-order', 'submitOrder', 'payment', 'paymentInstrument', 'addressId', 'updateAddress', 'gift-card', 'giftCard', 'buy-now-completion', 'buyNow', 'account', 'accountSecurity', 'securityMutation', 'signin', '/ap/', 'checkout%2554oken']) test('M5.7K explicit forbidden field ' + name, () => {
+  const d = nativeFixture({ requestPatch: { body: nativeBody + '&' + name + (name === 'buyNow' ? '=true' : '=false') } }).decide();
+  assert.equal(d.allowed, false); assert.equal(d.reason, 'FORBIDDEN_PATH'); assert.deepEqual(d.forbiddenLocations, ['BODY']);
+  assert.ok(d.nativeForm.forbiddenFieldCategories.length > 0);
+});
+
+for (const path of ['/checkout', '/place-order', '/submit-order', '/payment', '/address', '/gift-card', '/buy-now', '/account/security', '/ap/signin']) test('M5.7K forbidden path still blocked ' + path, () => {
+  assert.equal(nativeFixture({ requestPatch: { url: 'https://www.amazon.com.mx' + path } }).decide().allowed, false);
+});
+
+test('M5.7K unknown and sensitive classes never confer authority or waive arbitrary values', () => {
+  for (const body of ['unknown=1', nativeBody.replace('quantity=1', 'quantity=2') + '&token=OPAQUE', nativeBody + '&privatePayload=checkout', nativeBody + '&repurchaseToken=payment']) {
+    assert.equal(nativeFixture({ requestPatch: { body } }).decide().allowed, false);
+  }
+  assert.equal(nativeFixture({ noSubmit: true, requestPatch: { body: nativeBody + '&repurchaseToken=OPAQUE' } }).decide().allowed, false);
+});
+
+test('M5.7K corrected semantic field traverses unchanged native runtime once with redacted diagnostics', async () => {
+  const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: nativeBody + '&repurchaseToken=REDACTED_FIXTURE&submit.add-to-cart=Add', repeatRequest: true });
+  const r = await runCartResearch(config, f.chromium, f.clock, () => { });
+  assert.equal(r.cartRequestDispatchCount, 1); assert.equal(r.routingCounts.cartRequests, 1);
+  const row = r.actionRequests.find(x => x.passThroughSucceeded);
+  assert.ok(row.nativeFormDiagnostics.fieldClassifications.SENSITIVE_TOKEN_FIELD);
+  assert.deepEqual(row.nativeFormDiagnostics.legacyNameMatchClasses, ['SENSITIVE_TOKEN_FIELD']);
+  assert.doesNotMatch(JSON.stringify(r), /REDACTED_FIXTURE|repurchaseToken/);
+});
+
+test('M5.7K twelfth isolated operation remains single-use after all eleven consumed IDs', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'astra-cart-twelfth-')); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  for (const suffix of ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth']) {
+    const id = 'm5-7-b0gyvhlp4l-' + suffix; claimResearchOperation(id, dir); assert.throws(() => claimResearchOperation(id, dir), /OPERATION_ALREADY_CONSUMED/);
+  }
+});
+
+
+test('M5.7L Run 12 proves presence-only BUY_NOW rejection, not live activation', () => {
+  const r = JSON.parse(readFileSync('outputs/M5_7_CART_m5-7-b0gyvhlp4l-twelfth.json', 'utf8'));
+  const d = r.actionRequests.find(x => x.sequence === 305).nativeFormDiagnostics;
+  assert.equal(d.qualified, true); assert.equal(d.fieldClassifications.FORBIDDEN_OPERATION_FIELD, 1); assert.deepEqual(d.forbiddenFieldCategories, ['BUY_NOW']);
+  assert.equal(d.forbiddenFieldStates, undefined); assert.equal(r.cartRequestDispatchCount, 0);
+  const old = JSON.parse(readFileSync('outputs/M5_7L_SOURCE_BASELINE.json', 'utf8'))['scripts/amazon-cart-native-form.mjs'].source;
+  assert.match(old, /field.classification === 'FORBIDDEN_OPERATION_FIELD'/); assert.doesNotMatch(old, /evaluateForbiddenOperationField/);
+  const body = nativeBody + '&isBuyNow=false';
+  assert.equal(nativeFormBodyPolicy(body, 'application/x-www-form-urlencoded', config.asin).forbiddenOperation, true);
+  const d2 = nativeFixture({ requestPatch: { body } }).decide(); assert.equal(d2.allowed, true); assert.equal(d2.nativeForm.forbiddenFieldPresent, true); assert.equal(d2.nativeForm.forbiddenFieldActivated, false);
+});
+
+for (const [value, semantic, state] of [
+  ['', 'EMPTY', 'INACTIVE'], ['false', 'FALSEY_BOOLEAN', 'INACTIVE'], ['0', 'ZERO', 'INACTIVE'], ['add-to-cart', 'ADD_TO_CART_ENUM', 'INACTIVE'],
+  ['true', 'TRUTHY_BOOLEAN', 'ACTIVE'], ['1', 'NONZERO', 'ACTIVE'], ['2', 'NONZERO', 'ACTIVE'], ['buy-now', 'BUY_NOW_ENUM', 'ACTIVE'], ['SECRET_CANARY', 'UNKNOWN', 'UNKNOWN']
+]) test('M5.7L BUY_NOW request value class ' + semantic, () => {
+  assert.equal(forbiddenValueSemantic(value, true), semantic);
+  const d = nativeFixture({ requestPatch: { body: nativeBody + '&isBuyNow=' + encodeURIComponent(value) } }).decide();
+  assert.equal(d.allowed, state === 'INACTIVE'); assert.equal(d.nativeForm.forbiddenFieldStates[0].activation, state);
+  assert.equal(d.nativeForm.forbiddenFieldStates[0].origin, 'FORM_FIELD');
+  assert.doesNotMatch(JSON.stringify(d), /SECRET_CANARY|isBuyNow/);
+  if (state === 'UNKNOWN') assert.equal(d.nativeForm.bodyQualificationReason, 'UNKNOWN_FORBIDDEN_FIELD_STATE');
+});
+
+for (const name of ['buyNowToken', 'buy-now-completion', 'submit.buy-now', 'buyNow99']) test('M5.7L no blanket BUY_NOW exception for ' + name, () => {
+  assert.equal(nativeFixture({ requestPatch: { body: nativeBody + '&' + name + '=false' } }).decide().allowed, false);
+});
+
+test('M5.7L selected Buy Now wins, only known nonselected DOM submit siblings are inactive', () => {
+  const field = { category: 'BUY_NOW', origin: 'SUBMIT_CONTROL', valueSemantic: 'BUY_NOW_ENUM', clickedSubmitAction: 'ADD_TO_CART' };
+  assert.equal(evaluateForbiddenOperationField({ ...field, selectedSubmit: false }), 'INACTIVE');
+  assert.equal(evaluateForbiddenOperationField({ ...field, selectedSubmit: true }), 'ACTIVE');
+  assert.equal(evaluateForbiddenOperationField(field), 'UNKNOWN');
+  assert.equal(evaluateForbiddenOperationField({ ...field, selectedSubmit: false, clickedSubmitAction: 'BUY_NOW' }), 'ACTIVE');
+  assert.equal(evaluateForbiddenOperationField({ ...field, selectedSubmit: false, clickedSubmitAction: 'UNKNOWN' }), 'UNKNOWN');
+  assert.equal(nativeFixture({ requestPatch: { body: nativeBody + '&submit.buy-now=' } }).decide().allowed, false);
+});
+
+for (const options of [{ noSubmit: true }, { eventPatch: { trusted: false } }, { eventPatch: { productBound: false } }, { eventPatch: { defaultPrevented: true } }, { requestAt: 2200, now: 2300 }]) test('M5.7L inactive flag never bypasses native evidence ' + JSON.stringify(options), () => {
+  assert.equal(nativeFixture({ ...options, requestPatch: { body: nativeBody + '&isBuyNow=0' } }).decide().allowed, false);
+});
+
+for (const patch of [{ url: 'https://unagi.amazon.com.mx/cart/add-to-cart/A' }, { url: 'https://amazon.com.mx/cart/add-to-cart/A' }, { url: 'https://www.amazon.com.mx/buy-now' }, { url: nativeUrl + '?next=checkout' }, { main: false }, { redirect: true }, { body: nativeBody.replace('quantity=1', 'quantity=2') }, { body: nativeBody.replace(config.asin, 'B0H78BB9TY') }, { body: nativeBody.replace(/&merchantID=[^&]+/, '') }]) test('M5.7L inactive flag keeps independent request/context guard ' + JSON.stringify(patch), () => {
+  assert.equal(nativeFixture({ requestPatch: { ...patch, body: (patch.body ?? nativeBody) + '&isBuyNow=false' } }).decide().allowed, false);
+});
+
+test('M5.7L other operations remain blocked even with false flags and Add-to-Cart evidence', () => {
+  for (const name of ['checkout', 'payment', 'place-order', 'submit-order', 'address', 'gift-card', 'account', 'security']) assert.equal(nativeFixture({ requestPatch: { body: nativeBody + '&isBuyNow=false&' + name + '=false' } }).decide().allowed, false);
+  assert.equal(nativeFixture({ requestPatch: { body: nativeBody + '&isBuyNow=false&isBuyNow=true' } }).decide().allowed, false);
+  assert.equal(nativeFixture({ requestPatch: { body: nativeBody + '&isBuyNow=false&action=buy-now' } }).decide().allowed, false);
+});
+
+test('M5.7L inactive flag passes unchanged browser runtime once; failed continuation cannot count', async () => {
+  for (const fails of [false, true]) {
+    const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: nativeBody + '&isBuyNow=0', repeatRequest: true, continueThrows: fails });
+    const r = await runCartResearch(config, f.chromium, f.clock, () => { });
+    assert.equal(r.cartRequestDispatchCount, fails ? 0 : 1); assert.equal(r.routingCounts.cartRequests, 1); assert.doesNotMatch(JSON.stringify(r), /SECRET_CANARY|isBuyNow/);
+  }
+});
+
+test('M5.7L thirteenth isolated operation is single-use after all twelve prior IDs', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'astra-cart-thirteenth-')); t.after(() => rmSync(dir, { recursive: true, force: true }));
+  for (const suffix of ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth']) { const id = 'm5-7-b0gyvhlp4l-' + suffix; claimResearchOperation(id, dir); assert.throws(() => claimResearchOperation(id, dir), /OPERATION_ALREADY_CONSUMED/); }
+});
+
+
+test('M5.7N runtime persists candidate correlation without permitting ACTIVE or UNKNOWN', async () => {
+  for (const value of ['2', 'SECRET_CANARY']) {
+    const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: nativeBody + '&isBuyNow=' + value });
+    const r = await runCartResearch(config, f.chromium, f.clock, () => { });
+    assert.equal(r.cartRequestDispatchCount, 0); assert.equal(r.cartMutationCount, 0);
+    assert.equal(r.buyNowFieldCorrelation.serializedBuyNowCandidateKey, 'IS_BUY_NOW');
+    assert.equal(r.buyNowFieldCorrelation.correlation, 'BODY_ONLY_NOT_IN_DOM');
+    assert.equal(r.buyNowFieldCorrelation.currentActivationState, value === '2' ? 'ACTIVE' : 'UNKNOWN');
+    assert.doesNotMatch(JSON.stringify(r), /SECRET_CANARY/);
+  }
+});
+
+test('M5.7N unavailable diagnostics do not change the existing routing decision', async () => {
+  for (const body of [nativeBody, nativeBody + '&isBuyNow=2']) {
+    const f = fakeRuntime({ actionUrl: nativeUrl, nativeEvents: true, afterClickRequest: true, actionBody: body, diagnosticThrows: true });
+    const r = await runCartResearch(config, f.chromium, f.clock, () => { });
+    assert.equal(r.cartRequestDispatchCount, body === nativeBody ? 1 : 0); assert.equal(r.buyNowFieldCorrelation.correlation, 'UNKNOWN'); assert.doesNotMatch(JSON.stringify(r), /SECRET_DIAGNOSTIC_ERROR/);
+  }
 });
